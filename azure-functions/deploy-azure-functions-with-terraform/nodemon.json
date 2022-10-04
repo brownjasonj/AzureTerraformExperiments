@@ -1,0 +1,4 @@
+{
+    "watch": ["dist/index.js", "schemas/"],
+    "ext": "js, json"
+  }
