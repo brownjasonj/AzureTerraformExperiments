@@ -14,9 +14,14 @@ provider "azurerm" {
   features {}
 }
 
-# Create Resource Group 
-resource "azurerm_resource_group" "default" {
-  location = var.region
-  name = var.resource-group-name
+locals {
+  name = "azuretf"
+  location = "northeurope"
 }
 
+
+module "storage-account-module" {
+  source = "../../modules/storage-account-module"
+  name = local.name
+  location = local.location
+}
