@@ -82,6 +82,7 @@ resource "azurerm_application_insights" "application_insights" {
     - Dedicated (App Service) Plan. FAs will run on VMs managed by you. Doesn't scale automatically based on events.
 
 */
+
 resource "azurerm_app_service_plan" "app_service_plan" {
   name                = "${var.project}-${var.environment}-app-service-plan"
   resource_group_name = azurerm_resource_group.resource_group.name
@@ -93,7 +94,6 @@ resource "azurerm_app_service_plan" "app_service_plan" {
     size = "Y1"
   }
 }
-
 /*
     The final resource we need to create is the function app itself. It references resources created earlier: 
     
@@ -138,4 +138,134 @@ resource "azurerm_function_app" "function_app" {
     ]
   }
 }
+/*
+resource "azurerm_service_plan" "service_plan" {
+  name                = "${var.project}-${var.environment}-service-plan"
+  resource_group_name = azurerm_resource_group.resource_group.name
+  location            = azurerm_resource_group.resource_group.location
+  os_type             = "Linux"
+  sku_name            = "B1"
+}
 
+resource "azurerm_linux_web_app" "function_app" {
+  name                = "Example App Service"
+  resource_group_name = azurerm_resource_group.resource_group.name
+  location            = azurerm_service_plan.service_plan.location
+  service_plan_id     = azurerm_service_plan.service_plan.id
+
+  app_settings = {
+    "WEBSITE_RUN_FROM_PACKAGE" = "",
+    "FUNCTIONS_WORKER_RUNTIME" = "node",
+    "APPINSIGHTS_INSTRUMENTATIONKEY" = azurerm_application_insights.application_insights.instrumentation_key,
+  }
+
+  lifecycle {
+    ignore_changes = [
+      app_settings["WEBSITE_RUN_FROM_PACKAGE"],
+    ]
+  }
+}
+*/
+/*
+data "archive_file" "file_function_app" {
+  type        = "zip"
+  source_dir  = "../deploy-azure-functions-with-terraform"
+  output_path = "deploy-azure-functions-with-terraform.zip"
+}
+
+resource "azurerm_function_app" "function_app" {
+  name                       = format("%s-function-app",uuid())
+  resource_group_name        = azurerm_resource_group.resource_group.name
+  location                   = var.location
+  app_service_plan_id        = azurerm_app_service_plan.app_service_plan.id
+  app_settings = {
+    "WEBSITE_RUN_FROM_PACKAGE" = "1",
+    "FUNCTIONS_WORKER_RUNTIME" = "node",
+    "AzureWebJobsDisableHomepage" = "true",
+  }
+  os_type = "linux"
+  site_config {
+    linux_fx_version          = "node|14"
+    use_32_bit_worker_process = false
+  }
+  storage_account_name       = azurerm_storage_account.storage_account.name
+  storage_account_access_key = azurerm_storage_account.storage_account.primary_access_key
+  version                    = "~4"
+}
+
+locals {
+    publish_code_command = "az webapp deployment source config-zip --resource-group ${azurerm_resource_group.resource_group.name} --name ${azurerm_function_app.function_app.name} --src ${data.archive_file.file_function_app.output_path}"
+}
+
+resource "null_resource" "function_app_publish" {
+  provisioner "local-exec" {
+    command = local.publish_code_command
+  }
+  depends_on = [local.publish_code_command]
+  triggers = {
+    input_json = filemd5(data.archive_file.file_function_app.output_path)
+    publish_code_command = local.publish_code_command
+  }
+}
+
+*/
+
+/*
+data "archive_file" "file_function_app" {
+  type        = "zip"
+  source_dir  = "../deploy-azure-functions-with-terraform"
+  output_path = "./deploy-azure-functions-with-terraform.zip"
+}
+
+resource "azurerm_storage_container" "storage_container" {
+    name = format("%s-function-releases",uuid())
+    storage_account_name = "${azurerm_storage_account.storage_account.name}"
+    container_access_type = "private"
+}
+
+
+resource "azurerm_storage_blob" "storage_blob" {
+  name = "${filesha256(data.archive_file.file_function_app.output_path)}.zip"
+  storage_account_name = azurerm_storage_account.storage_account.name
+  storage_container_name = azurerm_storage_container.storage_container.name
+  type = "Block"
+  source = data.archive_file.file_function_app.output_path
+}
+
+data "azurerm_storage_account_blob_container_sas" "storage_account_blob_container_sas" {
+  connection_string = azurerm_storage_account.storage_account.primary_connection_string
+  container_name    = azurerm_storage_container.storage_container.name
+
+  start = "2022-10-06T00:00:00Z"
+  expiry = "2022-10-06T00:00:00Z"
+
+  permissions {
+    read   = true
+    add    = false
+    create = false
+    write  = false
+    delete = false
+    list   = false
+  }
+}
+
+resource "azurerm_function_app" "function_app" {
+  name                       = format("%s-function-app",uuid())
+  resource_group_name        = azurerm_resource_group.resource_group.name
+  location                   = var.location
+  app_service_plan_id        = azurerm_app_service_plan.app_service_plan.id
+  app_settings = {
+    "WEBSITE_RUN_FROM_PACKAGE"    = "https://${azurerm_storage_account.storage_account.name}.blob.core.windows.net/${azurerm_storage_container.storage_container.name}/${azurerm_storage_blob.storage_blob.name}${data.azurerm_storage_account_blob_container_sas.storage_account_blob_container_sas.sas}",
+    "FUNCTIONS_WORKER_RUNTIME" = "node",
+    "AzureWebJobsDisableHomepage" = "true",
+  }
+  os_type = "linux"
+  site_config {
+    linux_fx_version          = "node|14"
+    use_32_bit_worker_process = false
+  }
+  storage_account_name       = azurerm_storage_account.storage_account.name
+  storage_account_access_key = azurerm_storage_account.storage_account.primary_access_key
+  version                    = "~4"
+}
+*/
