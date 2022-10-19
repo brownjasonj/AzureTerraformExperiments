@@ -9,14 +9,11 @@ terraform {
   }
 }
 
-# Configure the Microsoft Azure Provider
-provider "azurerm" {
-  features {}
-}
+resource "random_uuid" "rg_name" {}
 
 # Create Resource Group 
 resource "azurerm_resource_group" "default" {
-  location = var.region
-  name = var.resource-group-name
+  location = var.location
+  name = "${random_uuid.rg_name.result}-${var.name}-${var.location}"
 }
 
