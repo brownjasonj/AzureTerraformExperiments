@@ -1,11 +1,6 @@
 "builders": [{
     "type": "azure-arm",
 
-    "client_id": "e3833e01-622c-414b-888e-46eb2eb0bf0e",
-    "client_secret": "pRn8Q~w2lwPn3gyIZ7BueCz_EO8B0uzoKVI~GcnG",
-    "tenant_id": "e8a64aeb-fc47-4028-996f-bd40b2c43782",
-    "subscription_id": "daeabc47-d5a8-4514-b01b-17305adf956a",
-
     "managed_image_resource_group_name": "myResourceGroup",
     "managed_image_name": "myPackerImage",
 
